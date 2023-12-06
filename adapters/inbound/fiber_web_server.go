@@ -7,6 +7,7 @@ import (
 	"github.com/ChristianSch/Theta/domain/ports/outbound"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
+	"github.com/gofiber/websocket/v2"
 )
 
 type FiberWebServerConfig struct {
@@ -64,4 +65,22 @@ func (f *FiberWebServer) AddRoute(method string, path string, handler inbound.Ro
 	}
 
 	f.adapters.Log.Debug("added route", outbound.LogField{Key: "method", Value: method}, outbound.LogField{Key: "path", Value: path})
+}
+
+func (f *FiberWebServer) AddWebsocketRoute(path string, handler inbound.RouteHandlerFunc) {
+	// upgrade websocket connection if needed
+	f.Server.Use(func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			return c.Next()
+		}
+
+		return fiber.ErrUpgradeRequired
+	})
+
+	f.Server.Get(path, websocket.New(func(c *websocket.Conn) {
+		// Here, convert the websocket.Conn to a generic interface if needed
+		handler(c)
+	}))
+
+	f.adapters.Log.Debug("added websocket route", outbound.LogField{Key: "path", Value: path})
 }

@@ -1,1 +1,11 @@
 <h1>Welcome to the Chat Room</h1>
+
+<div hx-ext="ws" ws-connect="/ws">
+    <div id="content"></div>
+    <div id="chat" hx-ws="connect:/ws" hx-trigger="messageReceived from ws">
+        <!-- Chat messages will be displayed here -->
+    </div>
+    <form id="form" ws-send _="on htmx:afterRequest set my value to ''">
+        <input name="message">
+    </form>
+</div>

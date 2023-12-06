@@ -45,11 +45,7 @@ func NewZapLogger(cfg ZapLoggerConfig) *ZapLogger {
 func (z *ZapLogger) convertFields(fields ...outbound.LogField) []zap.Field {
 	var zapFields []zap.Field
 	for _, field := range fields {
-		if f, ok := field.Value.(zap.Field); ok {
-			zapFields = append(zapFields, f)
-		} else {
-			zapFields = append(zapFields, zap.Any("unknown", field))
-		}
+		zapFields = append(zapFields, zap.Any(field.Key, field.Value))
 	}
 	return zapFields
 }
