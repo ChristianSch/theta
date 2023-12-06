@@ -9,12 +9,19 @@ import (
 
 func main() {
 	log := outbound.NewZapLogger(outbound.ZapLoggerConfig{Debug: true})
-	web := inbound.NewFiberWebServer(8080, inbound.FiberWebServerAdapters{Log: log})
+	web := inbound.NewFiberWebServer(inbound.FiberWebServerConfig{
+		Port:                8080,
+		TemplatesPath:       "./infrastructure/views",
+		TemplatesExtension:  ".gohtml",
+		StaticResourcesPath: "./infrastructure/static",
+	}, inbound.FiberWebServerAdapters{Log: log})
 
 	web.AddRoute("GET", "/", func(ctx interface{}) error {
 		log.Debug("handling request", outboundPorts.LogField{Key: "path", Value: "/"})
 		fiberCtx := ctx.(*fiber.Ctx)
-		return fiberCtx.SendString("hello world")
+		return fiberCtx.Render("chat", fiber.Map{
+			"Title": "Hello, World!",
+		}, "layouts/main")
 	})
 
 	if err := web.Start(); err != nil {

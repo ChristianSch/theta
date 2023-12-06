@@ -6,23 +6,36 @@ import (
 	"github.com/ChristianSch/Theta/domain/ports/inbound"
 	"github.com/ChristianSch/Theta/domain/ports/outbound"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/template/html/v2"
 )
 
+type FiberWebServerConfig struct {
+	Port                int
+	StaticResourcesPath string
+	TemplatesPath       string
+	TemplatesExtension  string
+}
+
 type FiberWebServer struct {
-	Port     int
-	Server   *fiber.App
-	adapters FiberWebServerAdapters
+	TemplatesPath string
+	Port          int
+	Server        *fiber.App
+	adapters      FiberWebServerAdapters
 }
 
 type FiberWebServerAdapters struct {
 	Log outbound.Log
 }
 
-func NewFiberWebServer(port int, adapters FiberWebServerAdapters) *FiberWebServer {
-	server := fiber.New()
+func NewFiberWebServer(cfg FiberWebServerConfig, adapters FiberWebServerAdapters) *FiberWebServer {
+	server := fiber.New(fiber.Config{
+		Views: html.New(cfg.TemplatesPath, cfg.TemplatesExtension),
+	})
+
+	server.Static("/static", cfg.StaticResourcesPath)
 
 	return &FiberWebServer{
-		Port:     port,
+		Port:     cfg.Port,
 		Server:   server,
 		adapters: adapters,
 	}

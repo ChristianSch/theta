@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/base.css">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.15/dist/tailwind.min.css" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.4.0/dist/themes/light.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.4.0/dist/shoelace-autoloader.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.4.0/dist/components/alert/alert.js"></script>
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon-180x180.png">
+    <link rel="shortcut icon" type="image/x-icon" href="/static/favicon-32x32.ico">
+    <link rel="icon" type="image/png" sizes="96x96" href="/static/favicon-96x96.png">
+    <meta name="msapplication-square310x310logo" content="/static/mstile-310x310.png">
+    <meta name="msapplication-TileColor" content="#7cd1cd">
+    <title>Theta: Personal GPT {{.Title}}</title>
+</head>
+  <body class="bg-white font-sans leading-normal tracking-normal flex flex-col min-h-screen" hx-boost="true">
+    {{embed}}
+  </body>
+</html>
