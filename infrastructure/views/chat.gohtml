@@ -5,7 +5,14 @@
     <div id="chat" hx-ws="connect:/ws" hx-trigger="messageReceived from ws">
         <!-- Chat messages will be displayed here -->
     </div>
-    <form id="form" ws-send _="on htmx:afterRequest set my value to ''">
-        <input name="message">
+    <form id="form" ws-send>
+        <input name="message" id="user-message">
     </form>
 </div>
+
+<script>
+    htmx.on("htmx:wsAfterMessage", function(evt) {
+        evt.preventDefault();
+        document.getElementById("user-message").value = "";
+    });
+</script>
