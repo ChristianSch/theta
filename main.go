@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/ChristianSch/Theta/adapters/inbound"
@@ -21,6 +22,28 @@ type WebsocketMsg struct {
 
 func main() {
 	log := outbound.NewZapLogger(outbound.ZapLoggerConfig{Debug: true})
+
+	// init llms first to see if we have any models available
+	ollama, err := outbound.NewOllamaLlmService(log)
+	if err != nil {
+		panic(err)
+	}
+
+	ollamaModels, err := ollama.ListModels()
+	if err != nil {
+		panic(err)
+	}
+
+	log.Debug("available ollama models", outboundPorts.LogField{Key: "models", Value: ollamaModels})
+
+	// TODO: init openai
+	if len(ollamaModels) == 0 {
+		panic(errors.New("no models available"))
+	}
+
+	// convenience check: if we have more than one model, use the first one
+	ollama.SetModel(ollamaModels[0])
+
 	web := inbound.NewFiberWebServer(inbound.FiberWebServerConfig{
 		Port:                8080,
 		TemplatesPath:       "./infrastructure/views",
@@ -35,6 +58,7 @@ func main() {
 	msgHandler := chat.NewIncomingMessageHandler(chat.IncomingMessageHandlerConfig{
 		Sender:    msgSender,
 		Formatter: msgFormatter,
+		Llm:       ollama,
 	})
 
 	web.AddRoute("GET", "/", func(ctx interface{}) error {
