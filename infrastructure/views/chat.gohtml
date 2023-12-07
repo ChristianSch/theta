@@ -1,13 +1,15 @@
-<h1>Welcome to the Chat Room</h1>
+<div class="container mx-auto p-4">
+    <h1>Welcome to the Chat Room</h1>
 
-<div hx-ext="ws" ws-connect="/ws">
-    <div id="content"></div>
-    <div id="chat" hx-ws="connect:/ws" hx-trigger="messageReceived from ws">
-        <!-- Chat messages will be displayed here -->
+    <div hx-ext="ws" ws-connect="/ws">
+        <div id="content"></div>
+        <div id="chat" hx-ws="connect:/ws" hx-trigger="messageReceived from ws">
+            <!-- Chat messages will be displayed here -->
+        </div>
+        <form id="form" ws-send>
+            <input name="message" id="user-message">
+        </form>
     </div>
-    <form id="form" ws-send>
-        <input name="message" id="user-message">
-    </form>
 </div>
 
 <script>

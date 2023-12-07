@@ -29,7 +29,13 @@ func main() {
 	}, inbound.FiberWebServerAdapters{Log: log})
 
 	msgSender := outbound.NewSendFiberWebsocketMessage(outbound.SendFiberWebsocketMessageConfig{Log: log})
-	msgHandler := chat.NewIncomingMessageHandler(chat.IncomingMessageHandlerConfig{Sender: msgSender})
+	msgFormatter := outbound.NewFiberMessageFormatter(outbound.FiberMessageFormatterConfig{
+		MessageTemplatePath: "./infrastructure/views/components/message.gohtml",
+	})
+	msgHandler := chat.NewIncomingMessageHandler(chat.IncomingMessageHandlerConfig{
+		Sender:    msgSender,
+		Formatter: msgFormatter,
+	})
 
 	web.AddRoute("GET", "/", func(ctx interface{}) error {
 		log.Debug("handling request", outboundPorts.LogField{Key: "path", Value: "/"})
