@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type MessageType int
 
@@ -10,8 +12,8 @@ const (
 )
 
 type Message struct {
-	AuthorId  string
 	Text      string
 	Timestamp time.Time
 	Type      MessageType
+	Id        string
 }

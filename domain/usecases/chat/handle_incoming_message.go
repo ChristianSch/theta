@@ -2,11 +2,13 @@ package chat
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/ChristianSch/Theta/domain/models"
 	"github.com/ChristianSch/Theta/domain/ports/outbound"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/google/uuid"
 )
 
 type IncomingMessageHandlerConfig struct {
@@ -28,6 +30,9 @@ func NewIncomingMessageHandler(cfg IncomingMessageHandlerConfig) *IncomingMessag
 }
 
 func (h *IncomingMessageHandler) Handle(message models.Message, connection interface{}) error {
+	msgId := fmt.Sprintf("msg-%s", strings.Split(uuid.New().String(), "-")[0])
+	log.Debug("starting processing of message", outbound.LogField{Key: "messageId", Value: msgId})
+
 	// check if message is valid
 	// get answer ...
 	msg, err := h.cfg.Formatter.Format(message)
@@ -42,14 +47,25 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 		return err
 	}
 
-	// complete answer
-	bytes := []byte{}
+	// send initial (empty) answer that we'll update as we get more chunks
+	answer, err := h.cfg.Formatter.Format(models.Message{
+		Text: "",
+		Type: models.GptMessage,
+		Id:   msgId,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err = h.cfg.Sender.SendMessage(answer, connection); err != nil {
+		return err
+	}
 
 	// this channel keeps track if the answer is finished
 	done := make(chan bool)
 	defer close(done)
 
-	// get answer
+	// read answer chunks and update the message chunk by chunk
 	fn := func(ctx context.Context, chunk []byte) error {
 		if len(chunk) == 0 {
 			log.Debug("final answer received", outbound.LogField{Key: "component", Value: "handle_incoming_message"})
@@ -62,7 +78,13 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 			outbound.LogField{Key: "length", Value: len(chunk)},
 		)
 
-		bytes = append(bytes, chunk...)
+		// update sent message
+		if err := h.cfg.Sender.SendMessage(
+			fmt.Sprintf("<div hx-swap-oob=\"beforeend:#%s\">%s</div>", msgId, string(chunk)),
+			connection); err != nil {
+			return err
+		}
+
 		return nil
 	}
 
@@ -84,27 +106,5 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 		return err
 	}
 
-	if len(bytes) == 0 {
-		log.Error("no answer received",
-			outbound.LogField{Key: "component", Value: "handle_incoming_message"})
-		return errors.New("no answer received")
-	}
-
-	log.Debug("answer completed",
-		outbound.LogField{Key: "component", Value: "handle_incoming_message"},
-		outbound.LogField{Key: "length", Value: len(bytes)},
-	)
-
-	// send message for answer
-	answer, err := h.cfg.Formatter.Format(models.Message{
-		Text: string(bytes),
-		Type: models.GptMessage,
-	})
-	if err != nil {
-		return err
-	}
-
-	return h.cfg.Sender.SendMessage(
-		answer,
-		connection)
+	return nil
 }

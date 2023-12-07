@@ -8,17 +8,15 @@
     <script src="https://unpkg.com/htmx.org/dist/htmx.min.js"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/morphdom-swap.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.4.0/dist/themes/light.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.4.0/dist/shoelace-autoloader.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.4.0/dist/components/alert/alert.js"></script>
-    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon-180x180.png">
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <!--<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon-180x180.png">
     <link rel="shortcut icon" type="image/x-icon" href="/static/favicon-32x32.ico">
     <link rel="icon" type="image/png" sizes="96x96" href="/static/favicon-96x96.png">
-    <meta name="msapplication-square310x310logo" content="/static/mstile-310x310.png">
+    <meta name="msapplication-square310x310logo" content="/static/mstile-310x310.png">-->
     <meta name="msapplication-TileColor" content="#7cd1cd">
     <title>Theta: Personal GPT {{.Title}}</title>
 </head>
-  <body class="bg-gray-800 text-gray-300 font-sans leading-normal tracking-normal flex flex-col min-h-screen" hx-boost="true">
+  <body class="bg-gray-800 text-gray-300 font-sans leading-normal tracking-normal" hx-boost="true">
     {{embed}}
   </body>
 </html>

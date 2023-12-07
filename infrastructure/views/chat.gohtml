@@ -1,18 +1,47 @@
-<div class="container mx-auto p-4">
-    <div hx-ext="ws" ws-connect="/ws">
-        <div id="content"></div>
-        <div id="chat" hx-ws="connect:/ws" hx-trigger="messageReceived from ws">
-            <!-- Chat messages will be displayed here -->
-        </div>
-        <form id="form" ws-send>
-            <input name="message" id="user-message">
-        </form>
+<div
+    class="container mx-auto p-4 max-w-4xl text-lg flex flex-col h-screen"
+    hx-ext="ws"
+    ws-connect="/ws/chat"
+    id="chat-socket"
+>
+    <div id="content" class="flex-grow">
+        <!-- Chat messages will be displayed here -->
+    </div>
+
+    <!-- prevent adding a newline when pressing enter by x-data and x-on -->
+    <textarea
+        ws-send
+        x-data="{}"
+        x-on:keydown.enter.prevent
+        hx-trigger="keydown[keyCode==13] from:body"
+        name="message"
+        id="user-message"
+        class="w-full display-block leading-8 p-4 mt-4 rounded-xl white bg-gray-900 border border-gray-700"
+        placeholder="Message GPT..."
+        style="min-height: 4rem"
+    ></textarea>
+
+    <div class="text-sm pt-4 text-gray-500">
+        Don't blindly trust the LLM. Use at your own risk. We don't secure you
+        against XSS or other attacks on purpose, as that would mean censored
+        output.
+    </div>
+
+    <div class="mx-auto max-w-4xl mb-8 text-xs">
+        Model: {{.Model}}
     </div>
 </div>
 
 <script>
-    htmx.on("htmx:wsAfterMessage", function(evt) {
+    htmx.on("htmx:wsAfterSend", function (evt) {
+        const textarea = document.getElementById("user-message");
+        textarea.value = "";
+        textarea.focus();
+        textarea.selectionEnd = 0;
+    });
+
+    htmx.on("htmx:wsError", function (evt) {
         evt.preventDefault();
-        document.getElementById("user-message").value = "";
+        console.log("error", evt);
     });
 </script>

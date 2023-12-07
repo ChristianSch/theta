@@ -66,11 +66,12 @@ func main() {
 		fiberCtx := ctx.(*fiber.Ctx)
 		return fiberCtx.Render("chat", fiber.Map{
 			"Title": "Hello, World!",
+			"Model": ollamaModels[0],
 		}, "layouts/main")
 	})
 
-	web.AddWebsocketRoute("/ws", func(conn interface{}) error {
-		log.Debug("handling websocket request", outboundPorts.LogField{Key: "path", Value: "/ws"})
+	web.AddWebsocketRoute("/ws/chat", func(conn interface{}) error {
+		log.Debug("handling websocket request", outboundPorts.LogField{Key: "path", Value: "/ws/chat"})
 		fiberConn := conn.(*websocket.Conn)
 
 		for {
@@ -93,7 +94,6 @@ func main() {
 			)
 
 			msg := models.Message{
-				AuthorId:  "", // FIXME:
 				Text:      wsMsg.Message,
 				Timestamp: time.Now(),
 				Type:      models.UserMessage,

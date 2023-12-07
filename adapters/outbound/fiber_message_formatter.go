@@ -22,8 +22,9 @@ func NewFiberMessageFormatter(cfg FiberMessageFormatterConfig) *FiberMessageForm
 }
 
 type MessageData struct {
-	Author string
-	Text   string
+	Author    string
+	Text      string
+	MessageId string
 }
 
 func (f *FiberMessageFormatter) Format(message models.Message) (string, error) {
@@ -44,8 +45,9 @@ func (f *FiberMessageFormatter) Format(message models.Message) (string, error) {
 	buf := new(bytes.Buffer)
 
 	err = tmpl.Execute(buf, MessageData{
-		Author: author,
-		Text:   message.Text,
+		Author:    author,
+		Text:      message.Text,
+		MessageId: message.Id,
 	})
 	if err != nil {
 		return "", err

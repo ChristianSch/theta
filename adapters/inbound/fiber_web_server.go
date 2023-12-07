@@ -35,6 +35,17 @@ func NewFiberWebServer(cfg FiberWebServerConfig, adapters FiberWebServerAdapters
 
 	server.Static("/static", cfg.StaticResourcesPath)
 
+	server.Use("/ws", func(c *fiber.Ctx) error {
+		adapters.Log.Debug("handling websocket upgrade requests request")
+
+		// IsWebSocketUpgrade returns true if the client
+		// requested upgrade to the WebSocket protocol.
+		if websocket.IsWebSocketUpgrade(c) {
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+
 	return &FiberWebServer{
 		Port:     cfg.Port,
 		Server:   server,
@@ -68,15 +79,6 @@ func (f *FiberWebServer) AddRoute(method string, path string, handler inbound.Ro
 }
 
 func (f *FiberWebServer) AddWebsocketRoute(path string, handler inbound.RouteHandlerFunc) {
-	// upgrade websocket connection if needed
-	f.Server.Use(func(c *fiber.Ctx) error {
-		if websocket.IsWebSocketUpgrade(c) {
-			return c.Next()
-		}
-
-		return fiber.ErrUpgradeRequired
-	})
-
 	f.Server.Get(path, websocket.New(func(c *websocket.Conn) {
 		// Here, convert the websocket.Conn to a generic interface if needed
 		handler(c)
