@@ -65,7 +65,7 @@ func main() {
 		log.Debug("handling request", outboundPorts.LogField{Key: "path", Value: "/"})
 		fiberCtx := ctx.(*fiber.Ctx)
 		return fiberCtx.Render("chat", fiber.Map{
-			"Title": "Hello, World!",
+			"Title": "",
 			"Model": ollamaModels[0],
 		}, "layouts/main")
 	})
