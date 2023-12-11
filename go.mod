@@ -43,6 +43,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.51.0
 	github.com/gofiber/template/html/v2 v2.0.5
 	github.com/gofiber/websocket/v2 v2.2.1
+	github.com/gomarkdown/markdown v0.0.0-20231115200524-a660076da3fd
 	github.com/tmc/langchaingo v0.0.0-20231205064123-af36340149bb
 	go.uber.org/multierr v1.10.0 // indirect
 )

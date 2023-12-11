@@ -1,7 +1,7 @@
 <div hx-swap-oob="beforeend:#content">
     <div class="text-left">
         <div class="font-semibold select-none pt-4">{{.Author}}</div>
-        <div class="inline-block text-white p-2" id={{.MessageId}}>
+        <div class="inline-block text-white p-2 {{ if .IsGpt }}gpt-message{{end}}" id={{.MessageId}}>
             {{.Text}}
         </div>
     </div>

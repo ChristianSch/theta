@@ -51,6 +51,9 @@ func main() {
 		StaticResourcesPath: "./infrastructure/static",
 	}, inbound.FiberWebServerAdapters{Log: log})
 
+	// markdown 2 html post processor
+	mdToHtmlPostProcessor := outbound.NewMdToHtmlLlmPostProcessor()
+
 	msgSender := outbound.NewSendFiberWebsocketMessage(outbound.SendFiberWebsocketMessageConfig{Log: log})
 	msgFormatter := outbound.NewFiberMessageFormatter(outbound.FiberMessageFormatterConfig{
 		MessageTemplatePath: "./infrastructure/views/components/message.gohtml",
@@ -59,6 +62,13 @@ func main() {
 		Sender:    msgSender,
 		Formatter: msgFormatter,
 		Llm:       ollama,
+		PostProcessors: []outboundPorts.PostProcessor{
+			{
+				Processor: mdToHtmlPostProcessor,
+				Order:     0, // first one
+				Name:      mdToHtmlPostProcessor.GetName(),
+			},
+		},
 	})
 
 	web.AddRoute("GET", "/", func(ctx interface{}) error {

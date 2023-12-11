@@ -27,12 +27,12 @@
         output.
     </div>
 
-    <div class="mx-auto max-w-4xl mb-8 text-xs">
-        Model: {{.Model}}
-    </div>
+    <div class="mx-auto max-w-4xl mb-8 text-xs">Model: {{.Model}}</div>
 </div>
 
 <script>
+    const messages = [];
+
     htmx.on("htmx:wsAfterSend", function (evt) {
         const textarea = document.getElementById("user-message");
         textarea.value = "";
@@ -43,5 +43,32 @@
     htmx.on("htmx:wsError", function (evt) {
         evt.preventDefault();
         console.log("error", evt);
+    });
+
+    htmx.on("htmx:wsAfterMessage", function (evt) {
+        const content = document.getElementById("content");
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const targetNode = document.getElementById("content");
+
+        // Options for the observer (which mutations to observe)
+        const config = { childList: true, subtree: true, characterData: true };
+
+        // Callback function to execute when mutations are observed
+        const callback = (mutationsList) => {
+            for (mutation of mutationsList) {
+                hljs.highlightAll();
+            }
+        };
+
+        // Create an observer instance linked to the callback function
+        const observer = new MutationObserver(callback);
+
+        // Start observing the target node for configured mutations
+        observer.observe(targetNode, config);
+
+        // Later, you can stop observing
+        // observer.disconnect();
     });
 </script>

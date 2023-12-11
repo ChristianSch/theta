@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ChristianSch/Theta/domain/models"
@@ -13,9 +14,10 @@ import (
 
 type IncomingMessageHandlerConfig struct {
 	// dependencies
-	Sender    outbound.SendMessageService
-	Formatter outbound.MessageFormatter
-	Llm       outbound.LlmService
+	Sender         outbound.SendMessageService
+	Formatter      outbound.MessageFormatter
+	Llm            outbound.LlmService
+	PostProcessors []outbound.PostProcessor
 }
 
 type IncomingMessageHandler struct {
@@ -24,6 +26,18 @@ type IncomingMessageHandler struct {
 }
 
 func NewIncomingMessageHandler(cfg IncomingMessageHandlerConfig) *IncomingMessageHandler {
+	// sort post processors by order
+	sort.SliceStable(cfg.PostProcessors, func(i, j int) bool {
+		return cfg.PostProcessors[i].Order < cfg.PostProcessors[j].Order
+	})
+
+	for _, p := range cfg.PostProcessors {
+		log.Debug("post processor registered",
+			outbound.LogField{Key: "name", Value: p.Name},
+			outbound.LogField{Key: "order", Value: p.Order},
+		)
+	}
+
 	return &IncomingMessageHandler{
 		cfg: cfg,
 	}
@@ -61,6 +75,8 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 		return err
 	}
 
+	var chunks []byte
+
 	// this channel keeps track if the answer is finished
 	done := make(chan bool)
 	defer close(done)
@@ -73,14 +89,23 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 			return nil
 		}
 
+		chunks = append(chunks, chunk...)
+
 		log.Debug("chunk received",
 			outbound.LogField{Key: "component", Value: "handle_incoming_message"},
 			outbound.LogField{Key: "length", Value: len(chunk)},
 		)
 
+		// post process the message
+		res := chunks
+
+		for _, p := range h.cfg.PostProcessors {
+			res, err = p.Processor.PostProcess(res)
+		}
+
 		// update sent message
 		if err := h.cfg.Sender.SendMessage(
-			fmt.Sprintf("<div hx-swap-oob=\"beforeend:#%s\">%s</div>", msgId, string(chunk)),
+			fmt.Sprintf("<div hx-swap-oob=\"innerHTML:#%s\">%s</div>", msgId, string(res)),
 			connection); err != nil {
 			return err
 		}

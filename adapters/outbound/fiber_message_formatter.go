@@ -25,6 +25,7 @@ type MessageData struct {
 	Author    string
 	Text      string
 	MessageId string
+	IsGpt     bool
 }
 
 func (f *FiberMessageFormatter) Format(message models.Message) (string, error) {
@@ -48,6 +49,7 @@ func (f *FiberMessageFormatter) Format(message models.Message) (string, error) {
 		Author:    author,
 		Text:      message.Text,
 		MessageId: message.Id,
+		IsGpt:     message.Type == models.GptMessage,
 	})
 	if err != nil {
 		return "", err
