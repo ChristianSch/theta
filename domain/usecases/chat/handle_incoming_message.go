@@ -75,11 +75,12 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 		return err
 	}
 
-	var chunks []byte
-
 	// this channel keeps track if the answer is finished
 	done := make(chan bool)
 	defer close(done)
+
+	// chunks contains *all* received chunks (= the whole answer)
+	var chunks []byte
 
 	// read answer chunks and update the message chunk by chunk
 	fn := func(ctx context.Context, chunk []byte) error {
@@ -97,13 +98,16 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 		)
 
 		// post process the message
+		// initially, only the original message
 		res := chunks
 
 		for _, p := range h.cfg.PostProcessors {
+			// each post processor gets the result of the previous one
 			res, err = p.Processor.PostProcess(res)
 		}
 
-		// update sent message
+		// update sent message by swapping it entirely (allows for properly render html,
+		// which would not work with a simple addition of deltas)
 		if err := h.cfg.Sender.SendMessage(
 			fmt.Sprintf("<div hx-swap-oob=\"innerHTML:#%s\">%s</div>", msgId, string(res)),
 			connection); err != nil {
@@ -113,6 +117,7 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 		return nil
 	}
 
+	// send message to llm via a goroutine so we can wait for the answer
 	go func() {
 		err = h.cfg.Llm.SendMessage(message.Text, []string{}, fn)
 		if err != nil {
