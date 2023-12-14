@@ -48,7 +48,10 @@
     htmx.on("htmx:wsAfterMessage", function (evt) {
         const elt = document.getElementById("user-message");
         if (elt.getBoundingClientRect().bottom + 20 > window.innerHeight) {
-            window.scrollTo({ top: elt.getBoundingClientRect().bottom + window.scrollY + 20, behavior: 'smooth' });
+            window.scrollTo({
+                top: elt.getBoundingClientRect().bottom + window.scrollY + 20,
+                behavior: "smooth",
+            });
         }
     });
 
