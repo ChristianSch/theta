@@ -8,16 +8,18 @@ import (
 
 	"github.com/ChristianSch/Theta/domain/models"
 	"github.com/ChristianSch/Theta/domain/ports/outbound"
+	"github.com/ChristianSch/Theta/domain/ports/outbound/repo"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 )
 
 type IncomingMessageHandlerConfig struct {
 	// dependencies
-	Sender         outbound.SendMessageService
-	Formatter      outbound.MessageFormatter
-	Llm            outbound.LlmService
-	PostProcessors []outbound.PostProcessor
+	Sender           outbound.SendMessageService
+	Formatter        outbound.MessageFormatter
+	Llm              outbound.LlmService
+	PostProcessors   []outbound.PostProcessor
+	ConversationRepo repo.ConversationRepo
 }
 
 type IncomingMessageHandler struct {
@@ -43,7 +45,7 @@ func NewIncomingMessageHandler(cfg IncomingMessageHandlerConfig) *IncomingMessag
 	}
 }
 
-func (h *IncomingMessageHandler) Handle(message models.Message, connection interface{}) error {
+func (h *IncomingMessageHandler) Handle(message models.Message, conversation models.Conversation, connection interface{}) error {
 	msgId := fmt.Sprintf("msg-%s", strings.Split(uuid.New().String(), "-")[0])
 	log.Debug("starting processing of message", outbound.LogField{Key: "messageId", Value: msgId})
 
@@ -119,7 +121,7 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 
 	// send message to llm via a goroutine so we can wait for the answer
 	go func() {
-		err = h.cfg.Llm.SendMessage(message.Text, []string{}, fn)
+		err = h.cfg.Llm.SendMessage(message.Text, conversation.Messages, fn)
 		if err != nil {
 			done <- true
 		}
@@ -127,6 +129,13 @@ func (h *IncomingMessageHandler) Handle(message models.Message, connection inter
 
 	// wait for answer to be finished
 	<-done
+
+	// add message and answer to conversation
+	h.cfg.ConversationRepo.AddMessage(conversation.Id, message)
+	h.cfg.ConversationRepo.AddMessage(conversation.Id, models.Message{
+		Text: string(chunks),
+		Type: models.GptMessage,
+	})
 
 	if err != nil {
 		log.Error("error while receiving answer",

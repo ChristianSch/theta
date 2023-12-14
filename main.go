@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"html/template"
 	"time"
 
 	"github.com/ChristianSch/Theta/adapters/inbound"
 	"github.com/ChristianSch/Theta/adapters/outbound"
+	"github.com/ChristianSch/Theta/adapters/outbound/repo"
 	"github.com/ChristianSch/Theta/domain/models"
 	outboundPorts "github.com/ChristianSch/Theta/domain/ports/outbound"
 	"github.com/ChristianSch/Theta/domain/usecases/chat"
@@ -36,6 +38,9 @@ func main() {
 
 	log.Debug("available ollama models", outboundPorts.LogField{Key: "models", Value: ollamaModels})
 
+	// all models
+	llmModels := ollamaModels
+
 	// TODO: init openai
 	if len(ollamaModels) == 0 {
 		panic(errors.New("no models available"))
@@ -45,7 +50,7 @@ func main() {
 	ollama.SetModel(ollamaModels[0])
 
 	web := inbound.NewFiberWebServer(inbound.FiberWebServerConfig{
-		Port:                8080,
+		Port:                5467,
 		TemplatesPath:       "./infrastructure/views",
 		TemplatesExtension:  ".gohtml",
 		StaticResourcesPath: "./infrastructure/static",
@@ -53,6 +58,9 @@ func main() {
 
 	// markdown 2 html post processor
 	mdToHtmlPostProcessor := outbound.NewMdToHtmlLlmPostProcessor()
+
+	// conversation repo
+	convRepo := repo.NewInMemoryConversationRepo()
 
 	msgSender := outbound.NewSendFiberWebsocketMessage(outbound.SendFiberWebsocketMessageConfig{Log: log})
 	msgFormatter := outbound.NewFiberMessageFormatter(outbound.FiberMessageFormatterConfig{
@@ -69,20 +77,105 @@ func main() {
 				Name:      mdToHtmlPostProcessor.GetName(),
 			},
 		},
+		ConversationRepo: convRepo,
 	})
 
 	web.AddRoute("GET", "/", func(ctx interface{}) error {
-		log.Debug("handling request", outboundPorts.LogField{Key: "path", Value: "/"})
 		fiberCtx := ctx.(*fiber.Ctx)
-		return fiberCtx.Render("chat", fiber.Map{
-			"Title": "",
-			"Model": ollamaModels[0],
+		return fiberCtx.Render("new_chat", fiber.Map{
+			"Title":  "",
+			"Models": llmModels,
 		}, "layouts/main")
 	})
 
-	web.AddWebsocketRoute("/ws/chat", func(conn interface{}) error {
-		log.Debug("handling websocket request", outboundPorts.LogField{Key: "path", Value: "/ws/chat"})
+	web.AddRoute("GET", "/chat", func(ctx interface{}) error {
+		fiberCtx := ctx.(*fiber.Ctx)
+		return fiberCtx.Redirect("/")
+	})
+
+	// create new conversation
+	web.AddRoute("POST", "/chat", func(ctx interface{}) error {
+		fiberCtx := ctx.(*fiber.Ctx)
+
+		// get model from form
+		model := fiberCtx.FormValue("model")
+		if model == "" {
+			log.Error("no model specified", outboundPorts.LogField{Key: "error", Value: "no model specified"})
+			return fiberCtx.Redirect("/")
+		}
+
+		// get message from form
+		message := fiberCtx.FormValue("message")
+		if message == "" {
+			log.Error("no message specified", outboundPorts.LogField{Key: "error", Value: "no message specified"})
+			return fiberCtx.Redirect("/")
+		}
+
+		// get conversation
+		conv, err := convRepo.CreateConversation(model)
+		if err != nil {
+			log.Error("error while creating conversation", outboundPorts.LogField{Key: "error", Value: err})
+			return err
+		}
+
+		fiberCtx.Append("HX-Replace-Url", "/chat/"+conv.Id)
+
+		return fiberCtx.Render("chat", fiber.Map{
+			"Title":          "",
+			"Models":         llmModels,
+			"ConversationId": conv.Id,
+			"UserMessage":    message,
+		}, "layouts/empty")
+	})
+
+	// open existing conversation
+	web.AddRoute("GET", "/chat/:id", func(ctx interface{}) error {
+		fiberCtx := ctx.(*fiber.Ctx)
+		convId := fiberCtx.Params("id")
+
+		// get conversation
+		conv, err := convRepo.GetConversation(convId)
+		if err != nil {
+			log.Error("error while getting conversation", outboundPorts.LogField{Key: "error", Value: err})
+			return fiberCtx.Redirect("/")
+		}
+
+		var renderedMessages []template.HTML
+
+		for _, msg := range conv.Messages {
+			renderedMsg, err := msgFormatter.Format(msg)
+			if err != nil {
+				log.Error("error while formatting message", outboundPorts.LogField{Key: "error", Value: err})
+				return err
+			}
+
+			// note that you shouldn't do this under no circumstances, this circumvents the XSS protection
+			renderedMessages = append(renderedMessages, template.HTML(renderedMsg))
+		}
+
+		return fiberCtx.Render("chat", fiber.Map{
+			"Title":          "",
+			"Model":          conv.Model,
+			"ConversationId": conv.Id,
+			"Messages":       renderedMessages,
+		}, "layouts/main")
+	})
+
+	web.AddWebsocketRoute("/ws/chat/:id", func(conn interface{}) error {
 		fiberConn := conn.(*websocket.Conn)
+		convId := fiberConn.Params("id")
+		log.Debug("handling websocket request",
+			outboundPorts.LogField{Key: "path", Value: "/ws/chat/:id"},
+			outboundPorts.LogField{Key: "id", Value: convId})
+
+		// get conversation
+		conv, err := convRepo.GetConversation(convId)
+		if err != nil {
+			log.Error("error while getting conversation", outboundPorts.LogField{Key: "error", Value: err})
+			return err
+		}
+
+		log.Debug("conversation received message", outboundPorts.LogField{Key: "conversation", Value: conv})
 
 		for {
 			messageType, message, err := fiberConn.ReadMessage()
@@ -103,15 +196,18 @@ func main() {
 				outboundPorts.LogField{Key: "messageType", Value: messageType},
 			)
 
-			msg := models.Message{
-				Text:      wsMsg.Message,
-				Timestamp: time.Now(),
-				Type:      models.UserMessage,
-			}
+			if len(wsMsg.Message) > 0 {
+				msg := models.Message{
+					Text:      wsMsg.Message,
+					Timestamp: time.Now(),
+					Type:      models.UserMessage,
+				}
 
-			if err := msgHandler.Handle(msg, fiberConn); err != nil {
-				log.Error("error while writing message", outboundPorts.LogField{Key: "error", Value: err})
-				break
+				// add message to conversation!
+				if err := msgHandler.Handle(msg, conv, fiberConn); err != nil {
+					log.Error("error while writing message", outboundPorts.LogField{Key: "error", Value: err})
+					break
+				}
 			}
 		}
 

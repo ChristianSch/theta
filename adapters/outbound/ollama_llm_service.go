@@ -4,15 +4,17 @@ import (
 	cont "context"
 	"errors"
 
+	"github.com/ChristianSch/Theta/domain/models"
 	"github.com/ChristianSch/Theta/domain/ports/outbound"
 	"github.com/jmorganca/ollama/api"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/ollama"
+	"github.com/tmc/langchaingo/schema"
 )
 
 type OllamaLlmService struct {
 	client *api.Client
-	llm    *ollama.LLM
+	llm    *ollama.Chat
 	model  *string
 	log    outbound.Log
 }
@@ -52,7 +54,7 @@ func (s *OllamaLlmService) ListModels() ([]string, error) {
 func (s *OllamaLlmService) SetModel(model string) error {
 	s.model = &model
 
-	llm, err := ollama.New(ollama.WithModel(model))
+	llm, err := ollama.NewChat(ollama.WithLLMOptions(ollama.WithModel(model)))
 	if err != nil {
 		return err
 	}
@@ -63,15 +65,29 @@ func (s *OllamaLlmService) SetModel(model string) error {
 	return nil
 }
 
-func (s *OllamaLlmService) SendMessage(prompt string, context []string, resHandler outbound.ResponseHandler) error {
+func (s *OllamaLlmService) SendMessage(prompt string, context []models.Message, resHandler outbound.ResponseHandler) error {
 	if s.llm == nil {
 		return errors.New(ModelNotSetError)
 	}
 
-	ctx := cont.Background()
+	var messages []schema.ChatMessage
 
-	_, err := s.llm.Call(ctx, prompt,
-		llms.WithStreamingFunc(resHandler),
-	)
+	for _, msg := range context {
+		if msg.Type == models.UserMessage {
+			messages = append(messages, schema.HumanChatMessage{
+				Content: msg.Text,
+			})
+		} else {
+			messages = append(messages, schema.AIChatMessage{
+				Content: msg.Text,
+			})
+		}
+	}
+
+	messages = append(messages, schema.HumanChatMessage{
+		Content: prompt,
+	})
+
+	_, err := s.llm.Call(cont.Background(), messages, llms.WithStreamingFunc(resHandler))
 	return err
 }
