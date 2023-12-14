@@ -3,8 +3,10 @@ package inbound
 import (
 	"fmt"
 
+	outboundAdapters "github.com/ChristianSch/Theta/adapters/outbound"
 	"github.com/ChristianSch/Theta/domain/ports/inbound"
 	"github.com/ChristianSch/Theta/domain/ports/outbound"
+	"github.com/gofiber/contrib/fiberzap"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
 	"github.com/gofiber/websocket/v2"
@@ -33,10 +35,18 @@ func NewFiberWebServer(cfg FiberWebServerConfig, adapters FiberWebServerAdapters
 		Views: html.New(cfg.TemplatesPath, cfg.TemplatesExtension),
 	})
 
+	zapLogger, ok := adapters.Log.(*outboundAdapters.ZapLogger)
+	if ok {
+		server.Use(fiberzap.New(fiberzap.Config{
+			Logger: zapLogger.GetLogger(),
+		}))
+		adapters.Log.Debug("added zap logger middleware")
+	}
+
 	server.Static("/static", cfg.StaticResourcesPath)
 
 	server.Use("/ws", func(c *fiber.Ctx) error {
-		adapters.Log.Debug("handling websocket upgrade requests request")
+		adapters.Log.Debug("handling websocket upgrade requests request", outbound.LogField{Key: "isUpgrade", Value: websocket.IsWebSocketUpgrade(c)})
 
 		// IsWebSocketUpgrade returns true if the client
 		// requested upgrade to the WebSocket protocol.

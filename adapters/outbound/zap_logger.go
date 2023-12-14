@@ -61,3 +61,7 @@ func (z *ZapLogger) Info(msg string, fields ...outbound.LogField) {
 func (z *ZapLogger) Error(msg string, fields ...outbound.LogField) {
 	z.log.Error(msg, z.convertFields(fields...)...)
 }
+
+func (z *ZapLogger) GetLogger() *zap.Logger {
+	return z.log
+}
