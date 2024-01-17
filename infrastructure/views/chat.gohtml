@@ -15,12 +15,20 @@
     <!-- prevent adding a newline when pressing enter by x-data and x-on. note that we also trigger by load but catch empty
     prompts in the backend part -->
     <textarea
+        x-data="{ 
+            resize () { 
+                $el.style.height = '0px'; 
+                $el.style.height = $el.scrollHeight + 'px' 
+            } 
+        }"
+        x-init="resize()"
+        @input="resize()"
         ws-send
         x-on:keydown.enter.prevent
         hx-trigger="load, keydown[keyCode==13] from:body"
         name="message"
         id="user-message"
-        class="w-full display-block leading-8 p-4 mt-4 rounded-xl white bg-gray-900 border border-gray-700"
+        class="w-full display-block leading-8 p-4 mt-4 rounded-xl white bg-gray-900 border border-gray-700 resize-none overflow-hidden"
         placeholder="Message GPT..."
         style="min-height: 4rem"
         >{{.UserMessage}}</textarea
